@@ -1400,6 +1400,27 @@ func (pf *PanelsFrame) InitPTY() {
 				pf.TermView.Pty = serializedPTY
 			}
 			pf.PtyMutex.Unlock()
+
+			// f4#128, RUP step 1: a bare shell never requests the kitty
+			// keyboard protocol on its own, so without this Ctrl+Tab stays
+			// ambiguous with Tab (see the check in HandleKey below) until
+			// some nested program (far2l) asks for it itself. Feed the same
+			// request such a program would write, through the same parser,
+			// right away -- before the shell has printed anything -- so a
+			// plain bash/zsh session starts with it already on.
+			//
+			// win32-input-mode is deliberately left alone here: unlike the
+			// kitty flags, which are pure TerminalView bookkeeping, mode
+			// 9001 mirrors whether the real console child has turned on
+			// ENABLE_VIRTUAL_TERMINAL_INPUT on its own console handle.
+			// Claiming it here without that having actually happened would
+			// make every keystroke f4 sends unreadable to cmd.exe/PowerShell
+			// instead of merely leaving a few chords ambiguous, so it is not
+			// a safe no-op the way the kitty case is. Left for a later step.
+			if !terminal.WindowsShellSyntax() {
+				pf.Parser.Process([]byte(terminal.KittyEnableDisambiguateSeq))
+			}
+
 			pf.localShellStarted(inheritedEnvironmentGeneration)
 
 			uiFrames.PostTask(func() {

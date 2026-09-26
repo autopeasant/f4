@@ -1077,3 +1077,26 @@ func TestTerminalView_ResetKeyboardProtocols(t *testing.T) {
 			tv.Win32InputMode, tv.KittyFlags, tv.ApplicationCursorKeys)
 	}
 }
+
+// f4#128, RUP step 1: KittyEnableDisambiguateSeq is what f4 itself feeds
+// through the ansi parser right after a fresh local shell's PTY comes up, so
+// that a bare shell -- which never asks for the kitty keyboard protocol on
+// its own -- still starts with the disambiguate flag on. This is the same
+// parsing path a real program's own request (far2l's, for one) goes through;
+// this test only checks that the sequence itself parses into exactly the
+// flag it claims to.
+func TestKittyEnableDisambiguateSeq_SetsDisambiguateFlag(t *testing.T) {
+	tv := NewTerminalView(80, 24)
+	defer tv.Close()
+	p := NewAnsiParser(tv, &mockPty{})
+
+	if tv.KittyFlags != 0 {
+		t.Fatalf("fresh TerminalView already reports kitty flags: %d", tv.KittyFlags)
+	}
+
+	p.Process([]byte(KittyEnableDisambiguateSeq))
+
+	if tv.KittyFlags != 1 {
+		t.Fatalf("KittyEnableDisambiguateSeq set flags=%d, want exactly 1 (disambiguate escape codes)", tv.KittyFlags)
+	}
+}

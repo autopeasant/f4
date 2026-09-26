@@ -21,6 +21,10 @@ import (
 // frame.go's HandleKey must treat that exactly the way it already treats
 // far2l's own request (TestPanelsFrame_TerminalForwarding_Advanced).
 func TestPanelsFrame_FreshLocalShellEnablesKittyProtocol(t *testing.T) {
+	if terminal.WindowsShellSyntax() {
+		t.Skip("cmd.exe-syntax local shells are covered by the Windows-only skip test instead")
+	}
+
 	pf := setupMockPanelsFrame(t)
 	defer pf.Close()
 

@@ -66,7 +66,7 @@ func TestPanelsFrame_FreshLocalShellEnablesKittyProtocol(t *testing.T) {
 	// The bare shell itself never wrote anything -- the enable request must
 	// have come from f4, not from a nested program.
 	deadline = time.Now().Add(time.Second)
-	for pf.TermView.KittyFlags == 0 {
+	for pf.TermView.KittyFlags.Load() == 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("a fresh bare local shell session did not have the kitty keyboard protocol enabled")
 		}
@@ -153,8 +153,8 @@ func TestPanelsFrame_FreshLocalShellSkipsProtocolEnableOnWindowsShellSyntax(t *t
 	// Give the startup goroutine a moment to have done whatever it does,
 	// then confirm neither keyboard protocol flag was claimed.
 	time.Sleep(20 * time.Millisecond)
-	if pf.TermView.KittyFlags != 0 || pf.TermView.Win32InputMode {
+	if pf.TermView.KittyFlags.Load() != 0 || pf.TermView.Win32InputMode {
 		t.Fatalf("a cmd.exe-syntax local shell must not have either advanced protocol claimed for it: kitty=%d win32=%v",
-			pf.TermView.KittyFlags, pf.TermView.Win32InputMode)
+			pf.TermView.KittyFlags.Load(), pf.TermView.Win32InputMode)
 	}
 }

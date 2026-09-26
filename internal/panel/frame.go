@@ -2482,7 +2482,7 @@ func (pf *PanelsFrame) ProcessKey(e *vtinput.InputEvent) bool {
 	// instead (far2l's own panel switch, for one) — its own Ctrl+Shift+Tab
 	// still goes to f4 (f4#128).
 	if e.Type == vtinput.KeyEventType && e.VirtualKeyCode == vtinput.VK_TAB && ctrl && !alt {
-		advanced := pf.TermView.Win32InputMode || pf.TermView.KittyFlags != 0
+		advanced := pf.TermView.Win32InputMode || pf.TermView.KittyFlags.Load() != 0
 		if shift || !advanced {
 			return false
 		}
@@ -2498,10 +2498,10 @@ func (pf *PanelsFrame) ProcessKey(e *vtinput.InputEvent) bool {
 	// Raw input mode check at the very top. If an interactive AltScreen app is active (e.g. mc, htop),
 	// we forward all non-global keys to terminal.PTY.
 	if !pf.ShowPanels && pf.TermView.OnAltScreen() {
-		if e.KeyDown || pf.TermView.Win32InputMode || pf.TermView.KittyFlags != 0 {
+		if e.KeyDown || pf.TermView.Win32InputMode || pf.TermView.KittyFlags.Load() != 0 {
 			active := pf.GetActivePTY()
 			if active != nil {
-				if seq := keymap.TranslateInput(e, pf.TermView.Win32InputMode, pf.TermView.KittyFlags, pf.TermView.ApplicationCursorKeys); seq != "" {
+				if seq := keymap.TranslateInput(e, pf.TermView.Win32InputMode, int(pf.TermView.KittyFlags.Load()), pf.TermView.ApplicationCursorKeys); seq != "" {
 					_, _ = pf.WritePTY(active, []byte(seq))
 				}
 			}
@@ -2677,10 +2677,10 @@ func (pf *PanelsFrame) ProcessKey(e *vtinput.InputEvent) bool {
 	// and for any interactive shell session when host console mode is active.
 	// We forward text and navigation to term.PTY, but let global shortcuts (Ctrl+Alt+Z) fall through.
 	if !pf.ShowPanels && (pf.IsPtyBusy() || pf.ShellMode == terminal.ShellModeHost) {
-		if e.KeyDown || pf.TermView.Win32InputMode || pf.TermView.KittyFlags != 0 {
+		if e.KeyDown || pf.TermView.Win32InputMode || pf.TermView.KittyFlags.Load() != 0 {
 			active := pf.GetActivePTY()
 			if active != nil {
-				if seq := keymap.TranslateInput(e, pf.TermView.Win32InputMode, pf.TermView.KittyFlags, pf.TermView.ApplicationCursorKeys); seq != "" {
+				if seq := keymap.TranslateInput(e, pf.TermView.Win32InputMode, int(pf.TermView.KittyFlags.Load()), pf.TermView.ApplicationCursorKeys); seq != "" {
 					_, _ = pf.WritePTY(active, []byte(seq))
 				}
 			}

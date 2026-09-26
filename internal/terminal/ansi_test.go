@@ -1066,15 +1066,15 @@ func TestTerminalView_ResetKeyboardProtocols(t *testing.T) {
 	defer tv.Close()
 	p := NewAnsiParser(tv, &mockPty{})
 	p.Process([]byte("\x1b[?9001h\x1b[?1h"))
-	tv.KittyFlags = 1
+	tv.KittyFlags.Store(1)
 	if !tv.Win32InputMode {
 		t.Fatal("win32 input mode was not enabled by DECSET 9001")
 	}
 
 	tv.ResetKeyboardProtocols()
-	if tv.Win32InputMode || tv.KittyFlags != 0 || tv.ApplicationCursorKeys {
+	if tv.Win32InputMode || tv.KittyFlags.Load() != 0 || tv.ApplicationCursorKeys {
 		t.Errorf("modes survived the reset: win32=%v kitty=%d appcursor=%v",
-			tv.Win32InputMode, tv.KittyFlags, tv.ApplicationCursorKeys)
+			tv.Win32InputMode, tv.KittyFlags.Load(), tv.ApplicationCursorKeys)
 	}
 }
 
@@ -1090,13 +1090,13 @@ func TestKittyEnableDisambiguateSeq_SetsDisambiguateFlag(t *testing.T) {
 	defer tv.Close()
 	p := NewAnsiParser(tv, &mockPty{})
 
-	if tv.KittyFlags != 0 {
-		t.Fatalf("fresh TerminalView already reports kitty flags: %d", tv.KittyFlags)
+	if tv.KittyFlags.Load() != 0 {
+		t.Fatalf("fresh TerminalView already reports kitty flags: %d", tv.KittyFlags.Load())
 	}
 
 	p.Process([]byte(KittyEnableDisambiguateSeq))
 
-	if tv.KittyFlags != 1 {
-		t.Fatalf("KittyEnableDisambiguateSeq set flags=%d, want exactly 1 (disambiguate escape codes)", tv.KittyFlags)
+	if tv.KittyFlags.Load() != 1 {
+		t.Fatalf("KittyEnableDisambiguateSeq set flags=%d, want exactly 1 (disambiguate escape codes)", tv.KittyFlags.Load())
 	}
 }

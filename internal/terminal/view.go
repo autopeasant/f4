@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/mattn/go-runewidth"
@@ -69,12 +70,20 @@ type TerminalView struct {
 	Win32InputMode        bool
 	BracketedPasteMode    bool
 	ApplicationCursorKeys bool
-	KittyFlags            int
-	KittyFlagsStack       []int
-	AutoWrap              bool
-	SixelDisplayMode      bool
-	MouseTrackingMode     int
-	MouseSGRMode          bool
+	// KittyFlags is written by the ansi-parsing goroutine (handleCSI in
+	// ansi.go, on the local shell's PTY read loop -- see InitPTY in
+	// internal/panel/frame.go) and read from the UI goroutine's key-handling
+	// path (frame.go's HandleKey, hotkey_conditions.go) as well as by tests
+	// driving InitPTY end to end, so unlike the rest of this grid/session
+	// state it needs its own cross-goroutine synchronization rather than
+	// tv.mu: an atomic.Int32, mirroring how AnsiParser guards its own
+	// cross-goroutine flags (syncEchoTracked/syncEchoArms in ansi.go).
+	KittyFlags        atomic.Int32
+	KittyFlagsStack   []int
+	AutoWrap          bool
+	SixelDisplayMode  bool
+	MouseTrackingMode int
+	MouseSGRMode      bool
 
 	clipboardChunks []byte
 	ClipboardReader func() string
@@ -224,7 +233,7 @@ func (tv *TerminalView) CloneStateFrom(other *TerminalView) {
 	tv.CursorVisible = other.CursorVisible
 	tv.UseAltScreen = other.UseAltScreen
 	tv.ScrollTop, tv.ScrollBottom = other.ScrollTop, other.ScrollBottom
-	tv.KittyFlags = other.KittyFlags
+	tv.KittyFlags.Store(other.KittyFlags.Load())
 	tv.KittyFlagsStack = append([]int(nil), other.KittyFlagsStack...)
 	// Selection coordinates belong to the old viewport and are not part of
 	// the cloned terminal state. Keeping them would paint a stale highlight
@@ -1711,7 +1720,7 @@ func (tv *TerminalView) ResetKeyboardProtocols() {
 	tv.mu.Lock()
 	defer tv.mu.Unlock()
 	tv.Win32InputMode = false
-	tv.KittyFlags = 0
+	tv.KittyFlags.Store(0)
 	tv.ApplicationCursorKeys = false
 }
 
